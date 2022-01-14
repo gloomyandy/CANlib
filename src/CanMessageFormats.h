@@ -17,6 +17,7 @@
 #include <General/Strnlen.h>
 #include <General/Portability.h>
 
+#include <climits>
 #include <ctime>
 #include <cstring>
 
@@ -93,7 +94,7 @@ struct __attribute__((packed)) CanMessageReset
 	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; }
 };
 
-// Stop movement on specific drives or all drives
+// Stop movement on specific drivers
 struct __attribute__((packed)) CanMessageStopMovement
 {
 	static constexpr CanMessageType messageType = CanMessageType::stopMovement;
@@ -103,49 +104,21 @@ struct __attribute__((packed)) CanMessageStopMovement
 	void SetRequestId(CanRequestId rid) noexcept { }			// these messages don't need RIDs
 };
 
-#if 0	// this message is no longer used
-
-// Movement message
-struct __attribute__((packed)) CanMessageMovement
+// Revert position on specific drivers
+struct __attribute__((packed)) CanMessageRevertPosition
 {
-	static constexpr CanMessageType messageType = CanMessageType::movement;
+	static constexpr CanMessageType messageType = CanMessageType::revertPosition;
 
-	uint32_t whenToExecute;
-	uint32_t accelerationClocks;
-	uint32_t steadyClocks;
-	uint32_t decelClocks;
+	uint32_t whichDrives : 16,									// bitmap of driver numbers whose required step counts are included n the message
+			 zero: 16;
+	uint32_t clocksAllowed;										// how many step clocks we allow for the move
+	int32_t finalStepCounts[MaxLinearDriversPerCanSlave];		// the net number of steps of the last move that were required
 
-	uint32_t deltaDrives : 4,						// which drivers are doing delta movement (not fully implemented yet, so may change)
-			 pressureAdvanceDrives : 4,				// which drivers have pressure advance applied
-			 zero : 5,								// unused (was: which drivers have endstop checks applied, and whether to stop all drives on endstop triggering)
-			 seq : 3;								// TEMP sequence number
-
-	float initialSpeedFraction;
-	float finalSpeedFraction;
-
-	float initialX;									// needed only for delta movement
-	float initialY;									// needed only for delta movement
-	float finalX;									// needed only for delta movement
-	float finalY;									// needed only for delta movement
-	float zMovement;								// needed only for delta movement
-
-	struct PerDriveValues
-	{
-		int32_t steps;								// net steps moved
-
-		void Init() noexcept
-		{
-			steps = 0;
-		}
-	};
-
-	PerDriveValues perDrive[MaxDriversPerCanSlave];
-
-	void SetRequestId(CanRequestId rid) noexcept { }			// these messages don't have RIDs, use the whenToExecute field to avoid duplication
-	void DebugPrint() const noexcept;
+	void SetRequestId(CanRequestId rid) noexcept { zero = 0; }	// these messages don't need RIDs
+	static constexpr size_t GetActualDataLength(size_t numReverting) noexcept { return (2 * sizeof(uint32_t)) + (numReverting * sizeof(int32_t)); }
 };
 
-#endif
+static_assert(CanMessageRevertPosition::GetActualDataLength(MaxLinearDriversPerCanSlave) == sizeof(CanMessageRevertPosition));
 
 // Movement message
 struct __attribute__((packed)) CanMessageMovementLinear
@@ -177,7 +150,7 @@ struct __attribute__((packed)) CanMessageMovementLinear
 
 	PerDriveValues perDrive[MaxLinearDriversPerCanSlave];
 
-	void SetRequestId(CanRequestId rid) noexcept { }			// these messages don't have RIDs, use the whenToExecute field to avoid duplication
+	void SetRequestId(CanRequestId rid) noexcept { zero = 0; }		// these messages don't have RIDs
 	void DebugPrint() const noexcept;
 
 	size_t GetActualDataLength() const noexcept
@@ -359,9 +332,12 @@ struct __attribute__((packed)) CanMessageSetHeaterTemperature
 
 	uint16_t requestId : 12,
 			 zero : 4;
-	uint16_t heaterNumber;
+	uint16_t heaterNumber : 8,
+			 zero2 : 7,
+			 isBedOrChamber : 1;
 	float setPoint;
-	uint8_t command;
+	uint8_t command : 4,
+			zero3 : 4;
 
 	static constexpr uint8_t commandNone = 0;
 	static constexpr uint8_t commandOff = 1;
@@ -371,7 +347,7 @@ struct __attribute__((packed)) CanMessageSetHeaterTemperature
 	static constexpr uint8_t commandUnsuspend = 5;
 	static constexpr uint8_t commandReset = 6;				// reset the heater after a failed model update
 
-	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; }
+	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; zero2 = 0; zero3 = 0; }
 };
 
 struct __attribute__((packed)) CanMessageM303
@@ -1118,6 +1094,7 @@ union CanMessage
 	CanMessageEmergencyStop eStop;
 	CanMessageEnterTestMode enterTestMode;
 	CanMessageStopMovement stopMovement;
+	CanMessageRevertPosition revertPosition;
 	CanMessageReset reset;
 #if 0	// this message is no longer used
 	CanMessageMovement move;

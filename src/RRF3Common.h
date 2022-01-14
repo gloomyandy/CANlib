@@ -81,6 +81,8 @@ constexpr float NormalAmbientTemperature = 25.0;		// The ambient temperature we 
 constexpr float LowAmbientTemperature = 15.0;			// A lower ambient temperature that we assume when checking heater performance
 constexpr float DefaultMaxTempExcursion = 15.0;			// How much error we tolerate when maintaining temperature before deciding that a heater fault has occurred
 constexpr float MinimumConnectedTemperature = -5.0;		// Temperatures below this we treat as a disconnected thermistor
+constexpr float MinToolTemperatureRiseFactor = 0.6;		// Minimum actual/expected temperature rise to not trigger a heater fault for hot end heaters
+constexpr float MinBedTemperatureRiseFactor = 0.3;		// Minimum actual/expected temperature rise to not trigger a heater fault for bed and chamber heaters. One user needs <= 0.333.
 
 static_assert(DefaultMaxTempExcursion > TEMPERATURE_CLOSE_ENOUGH, "DefaultMaxTempExcursion is too low");
 
@@ -89,7 +91,7 @@ constexpr PwmFrequency DefaultHeaterPwmFreq = 250;		// normal PWM frequency used
 constexpr PwmFrequency MaxHeaterPwmFrequency = 1000;	// maximum supported heater PWM frequency, to avoid overheating the mosfets
 constexpr PwmFrequency DefaultFanPwmFreq = 250;			// increase to 25kHz using M106 command to meet Intel 4-wire PWM fan specification
 constexpr PwmFrequency DefaultPinWritePwmFreq = 500;	// default PWM frequency for M42 pin writes and extrusion ancillary PWM
-constexpr PwmFrequency ServoRefreshFrequency = 50;
+constexpr PwmFrequency DefaultServoRefreshFrequency = 50;
 
 // Firmware module numbers
 enum class FirmwareModule : uint8_t
@@ -131,11 +133,12 @@ union StandardDriverStatus
 				s2vsb : 1,								// short to VS phase B
 				ola : 1,								// open load phase A
 				olb : 1,								// open load phase B
-				// bits 8-15
+				// bits 8-11
 				stall : 1,								// stall, or closed loop error exceeded
 				externalDriverError : 1,				// external driver signalled error
 				closedLoopPositionWarning : 1,			// close to stall, or closed loop warning
 				closedLoopPositionNotMaintained : 1,	// failed to achieve position
+				// bits 12-15
 				closedLoopNotTuned : 1,					// closed loop driver has not been tuned
 				closedLoopTuningError : 1,				// closed loop tuning failed
 				closedLoopIllegalMove : 1,				// move attempted in closed loop mode when driver not tuned
@@ -147,15 +150,16 @@ union StandardDriverStatus
 				sgresultMin : 10;						// minimum stallguard result seen
 	};
 
-	static constexpr unsigned int OtBitPos = 0;
-	static constexpr unsigned int OtpwBitPos = 1;
-	static constexpr unsigned int StandstillBitPos = 8;
-	static constexpr unsigned int StallBitPos = 10;
-	static constexpr unsigned int SgresultBitPos = 16;
+	static constexpr unsigned int OtpwBitPos = 0;
+	static constexpr unsigned int OtBitPos = 1;
+	static constexpr unsigned int StallBitPos = 8;
+	static constexpr unsigned int ExternDriverErrorBitPos = 9;
+	static constexpr unsigned int StandstillBitPos = 16;
+	static constexpr unsigned int SgresultBitPos = 22;
 
-	static constexpr uint32_t ErrorMask =    0b1'0010'1010'0011'1110;	// bit positions that usually correspond to errors
-	static constexpr uint32_t WarningMask =  0b0'1001'0000'1100'0001;	// bit positions that correspond to warnings
-	static constexpr uint32_t InfoMask =     0b0'0100'0101'0000'0000;	// bit positions that correspond to information
+	static constexpr uint32_t ErrorMask =    0b00'0100'1010'0011'1110;	// bit positions that usually correspond to errors
+	static constexpr uint32_t WarningMask =  0b00'0010'0000'1100'0001;	// bit positions that correspond to warnings
+	static constexpr uint32_t InfoMask =     0b11'1001'0101'0000'0000;	// bit positions that correspond to information, including the unused bit
 
 	static_assert((ErrorMask & WarningMask) == 0);
 	static_assert((ErrorMask & InfoMask) == 0);
@@ -178,6 +182,7 @@ private:
 	// Strings representing the meaning of each bit in DriverStatus
 	static constexpr const char * _ecv_array BitMeanings[] =
 	{
+		// Bits 0-7
 		"over temperature warning",
 		"over temperature shutdown",
 		"phase A short to ground",
@@ -186,15 +191,19 @@ private:
 		"phase B short to Vin",
 		"phase A may be disconnected",
 		"phase B may be disconnected",
-		"standstill",
+		// Bits 8-11
 		"stalled",
-		"not present",
 		"external driver error",
 		"position tolerance exceeded",
 		"failed to maintain position",
+		// Bits 12-15
 		"not tuned",
 		"tuning failed",
-		"move attempted when not tuned"
+		"move attempted when not tuned",
+		"unused bit",
+		// Bit 16
+		"standstill",
+		"not present",
 	};
 
 	static_assert((1u << ARRAY_SIZE(BitMeanings)) - 1 == (ErrorMask | WarningMask | InfoMask));
@@ -217,7 +226,7 @@ enum class HeaterMode : uint8_t
 {
 	// The order of these is important because we test "mode > HeatingMode::suspended" to determine whether the heater is active
 	// and "mode >= HeatingMode::off" to determine whether the heater is either active or suspended
-	fault,
+	fault = 0,
 	offline,
 	off,
 	suspended,
