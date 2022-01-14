@@ -21,6 +21,19 @@ struct CanTiming
 	uint16_t tseg1;					// now far into the period the sample point is, minimum 1, maximum period-2
 	uint16_t jumpWidth;				// the (re)synchronisation jump width
 
+#if STM32H7
+	// Defaults for CAN-FD at 1Mbit/sec for now use Duet bit times
+	static constexpr uint16_t DefaultPeriod_1M = 48;
+	static constexpr uint16_t DefaultTseg1_1M = 26;
+	static constexpr uint16_t DefaultJumpWidth_1M = 8;
+
+	// Defaults for secondary port, plain CAN at 250kbit/sec
+	static constexpr uint16_t DefaultPeriod_250k = 192;
+	static constexpr uint16_t DefaultTseg1_250k = 104;
+	static constexpr uint16_t DefaultJumpWidth_250k = 32;
+
+	static constexpr uint32_t ClockFrequency = 48000000;
+#else
 	// Defaults for Duet boards, CAN-FD at 1Mbit/sec
 	static constexpr uint16_t DefaultPeriod_1M = 48;
 	static constexpr uint16_t DefaultTseg1_1M = 26;
@@ -32,6 +45,7 @@ struct CanTiming
 	static constexpr uint16_t DefaultJumpWidth_250k = 32;
 
 	static constexpr uint32_t ClockFrequency = 48000000;
+#endif
 
 	bool IsValid() const noexcept
 	{
@@ -54,6 +68,7 @@ struct CanTiming
 	}
 };
 
+#if !STM32F4
 // This is read from the user area RAM, so all values default to all bits set
 class CanUserAreaData
 {
@@ -84,5 +99,6 @@ private:
 };
 
 static_assert(sizeof(CanUserAreaData) == 16);
+#endif
 
 #endif /* SRC_CANTIMINGDATA_H_ */

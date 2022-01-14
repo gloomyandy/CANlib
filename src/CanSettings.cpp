@@ -8,7 +8,7 @@
 #include "CanSettings.h"
 #include "CanId.h"
 #include <cstring>
-
+#if !STM32F4
 uint16_t CanUserAreaData::GetChecksum() const noexcept
 {
 	const uint16_t *p = reinterpret_cast<const uint16_t*>(this);
@@ -85,5 +85,5 @@ void CanUserAreaData::GetTiming(CanTiming& data) const noexcept
 		data.SetDefaults_1Mb();
 	}
 }
-
+#endif
 // End
