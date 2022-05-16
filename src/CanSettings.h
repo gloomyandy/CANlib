@@ -68,7 +68,7 @@ struct CanTiming
 	}
 };
 
-#if !STM32F4
+#if !STM32
 // This is read from the user area RAM, so all values default to all bits set
 class CanUserAreaData
 {

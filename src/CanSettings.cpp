@@ -8,7 +8,7 @@
 #include "CanSettings.h"
 #include "CanId.h"
 #include <cstring>
-#if !STM32F4
+#if !STM32
 uint16_t CanUserAreaData::GetChecksum() const noexcept
 {
 	const uint16_t *p = reinterpret_cast<const uint16_t*>(this);
