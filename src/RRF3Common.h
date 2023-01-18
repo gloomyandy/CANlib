@@ -103,10 +103,11 @@ constexpr float DefaultHoldTimeMicroseconds = 2.5;
 
 // Driver brake control
 constexpr uint16_t DefaultDelayAfterBrakeOn = 100;		// milliseconds delay between turning a driver brake on and disabling the driver
+constexpr PwmFrequency BrakePwmFrequency = 500;
 
 // Closed loop
-constexpr float DefaultClosedLoopPositionErrorThreshold = 2.0;
-constexpr float DefaultClosedLoopPositionWarningThreshold = 1.0;
+constexpr float DefaultClosedLoopPositionErrorThreshold = 4.0;
+constexpr float DefaultClosedLoopPositionWarningThreshold = 2.0;
 
 // Accelerometer
 constexpr size_t NumAccelerometerAxes = 3;
