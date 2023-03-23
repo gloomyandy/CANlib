@@ -116,7 +116,7 @@ struct __attribute__((packed)) CanMessageRevertPosition
 
 static_assert(CanMessageRevertPosition::GetActualDataLength(MaxLinearDriversPerCanSlave) == sizeof(CanMessageRevertPosition));
 
-// Movement message
+// Movement messages
 struct __attribute__((packed)) CanMessageMovementLinear
 {
 	static constexpr CanMessageType messageType = CanMessageType::movementLinear;
@@ -129,12 +129,9 @@ struct __attribute__((packed)) CanMessageMovementLinear
 	uint32_t pressureAdvanceDrives : 8,				// which drivers have pressure advance applied
 			 numDrivers : 4,						// how many drivers we included
 			 seq : 7,								// sequence number
-			 shapeAccelStart : 1,					// true if input shaping should be applied to the start of the acceleration segment
-			 shapeAccelEnd : 1,						// true if input shaping should be applied to the end of the acceleration segment
-			 shapeDecelStart : 1,					// true if input shaping should be applied to the start of the deceleration segment
-			 shapeDecelEnd : 1,						// true if input shaping should be applied to the end of the deceleration segment
-			 replacement : 1,						// true if this is a modification to a previously-sent move with the same whenToExecute value
-			 zero : 8;								// unused
+			 zero : 13;								// unused
+
+	static constexpr uint8_t SeqMask = 0x7f;
 
 	float initialSpeedFraction;						// the initial speed divided by the top speed
 	float finalSpeedFraction;						// the final speed divided by the top speed
@@ -153,7 +150,6 @@ struct __attribute__((packed)) CanMessageMovementLinear
 
 	void SetRequestId(CanRequestId rid) noexcept	// these messages don't have RIDs
 	{
-		shapeAccelStart = shapeAccelEnd = shapeDecelStart = shapeDecelEnd = replacement = 0;
 		zero = 0;
 	}
 
@@ -170,6 +166,70 @@ struct __attribute__((packed)) CanMessageMovementLinear
 		for (size_t drive = 0; drive < numDrivers; ++drive)
 		{
 			if (perDrive[drive].steps != 0)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+};
+
+// Movement messages
+struct __attribute__((packed)) CanMessageMovementLinearShaped
+{
+	static constexpr CanMessageType messageType = CanMessageType::movementLinearShaped;
+
+	uint32_t whenToExecute;							// the master clock time at which this move should start
+	uint32_t accelerationClocks;					// how many clocks the acceleration phase should last
+	uint32_t steadyClocks;							// how many clocks the steady speed phase should last
+	uint32_t decelClocks;							// how many clocks the deceleration phase should last
+
+	uint32_t extruderDrives : 8,					// which drivers are for extruders
+			 numDrivers : 4,						// how many drivers we included (maximum is 8)
+			 seq : 4,								// sequence number
+			 shapingPlan : 8,						// the input shaping plan for this move (see file InputShaperPlan.h)
+			 usePressureAdvance : 1,				// true to apply PA to the extruders
+			 zero : 7;								// unused
+
+	static constexpr uint8_t SeqMask = 0x0f;
+
+	float acceleration;								// the base acceleration during the acceleration segment, when the total distance is normalised to 1.0
+	float deceleration;								// the base deceleration during the deceleration segment, when the total distance is normalised to 1.0
+
+	union PerDriveValues
+	{
+		int32_t steps;								// net steps moved by this drive (for non-extruders)
+		float extrusion;							// how many steps of extrusion to do (for extruders) including fractional parts
+
+		void Init() noexcept
+		{
+			steps = 0;
+		}
+	};
+
+	PerDriveValues perDrive[MaxLinearDriversPerCanSlave];
+
+	void SetRequestId(CanRequestId rid) noexcept	// these messages don't have RIDs
+	{
+		extruderDrives = 0;
+		usePressureAdvance = 0;
+		shapingPlan = 0;
+		zero = 0;
+	}
+
+	void DebugPrint() const noexcept;
+
+	size_t GetActualDataLength() const noexcept
+	{
+		return (sizeof(*this) - sizeof(perDrive)) + (numDrivers * sizeof(perDrive[0]));
+	}
+
+	// This is called from just one place (in CanMotion::FinishMovement), so inline
+	bool HasMotion() const noexcept
+	{
+		for (size_t drive = 0; drive < numDrivers; ++drive)
+		{
+			if (perDrive[drive].steps != 0)				// we rely on this being valid even if perDrive[drive] contains [positive] floating point zero
 			{
 				return true;
 			}
@@ -591,11 +651,15 @@ struct __attribute__((packed)) CanMessageSetInputShaping
 {
 	static constexpr CanMessageType messageType = CanMessageType::setInputShaping;
 
+	struct ShapingPair { float coefficient; float duration; };
+
 	uint16_t requestId : 12,
 			 zero : 4;
 
-	// remainder TODO
+	uint16_t numExtraImpulses;							// the number of extra impulses
+	ShapingPair impulses[7];							// the coefficients and durations of the impulses
 
+	size_t GetActualDataLength() const noexcept { return (2 * sizeof(uint16_t)) + (numExtraImpulses * sizeof(ShapingPair)); }
 	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; }
 };
 
@@ -1050,6 +1114,7 @@ union CanMessage
 	CanMessageRevertPosition revertPosition;
 	CanMessageReset reset;
 	CanMessageMovementLinear moveLinear;
+	CanMessageMovementLinearShaped moveLinearShaped;
 	CanMessageReturnInfo getInfo;
 	CanMessageSetHeaterTemperature setTemp;
 	CanMessageStandardReply standardReply;
