@@ -493,10 +493,12 @@ struct __attribute__((packed)) CanMessageSetFanSpeed
 	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; }
 };
 
+#if 0
+
 // Request to create an input monitor
-struct __attribute__((packed)) CanMessageCreateInputMonitor
+struct __attribute__((packed)) CanMessageCreateInputMonitorOld
 {
-	static constexpr CanMessageType messageType = CanMessageType::createInputMonitor;
+	static constexpr CanMessageType messageType = CanMessageType::createInputMonitorOld;
 
 	uint16_t requestId : 12,
 			 zero : 4;
@@ -511,9 +513,9 @@ struct __attribute__((packed)) CanMessageCreateInputMonitor
 };
 
 // Request to reconfigure an input monitor
-struct __attribute__((packed)) CanMessageChangeInputMonitor
+struct __attribute__((packed)) CanMessageChangeInputMonitorOld
 {
-	static constexpr CanMessageType messageType = CanMessageType::changeInputMonitor;
+	static constexpr CanMessageType messageType = CanMessageType::changeInputMonitorOld;
 
 	uint16_t requestId : 12,
 			 zero : 4;
@@ -522,13 +524,55 @@ struct __attribute__((packed)) CanMessageChangeInputMonitor
 	uint8_t action;
 
 	static constexpr uint8_t actionDontMonitor = 0, actionDoMonitor = 1, actionDelete = 2, actionChangeThreshold = 3, actionChangeMinInterval = 4,
-								actionReturnPinName = 5, actionSetDriveLevel = 6;
-	// When the action is actionSetDriveLevel the value of param also defines the action:
-	//		0xFFFF = auto calibrate and report drive level
-	//		0xFFFE = just report the drive level
-	//		other  = set the drive level
+								actionReturnPinName = 5;
 
 	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; }
+};
+
+#endif
+
+// Request to create an input monitor
+struct __attribute__((packed)) CanMessageCreateInputMonitorNew
+{
+	static constexpr CanMessageType messageType = CanMessageType::createInputMonitorNew;
+
+	uint16_t requestId : 12,
+			 zero : 4;
+	RemoteInputHandle handle;
+	uint32_t threshold;			// analog threshold, or zero if digital
+	uint16_t minInterval;
+	char pinName[54];			// null terminated
+
+	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; }
+	size_t GetActualDataLength() const noexcept { return 2 * sizeof(uint16_t) + sizeof(uint32_t) + sizeof(RemoteInputHandle) + Strnlen(pinName, sizeof(pinName)/sizeof(pinName[0])); }
+	size_t GetMaxPinNameLength(size_t dataLength) const noexcept { return dataLength - (2 * sizeof(uint16_t) + sizeof(uint32_t) + sizeof(RemoteInputHandle)); }
+};
+
+// Request to reconfigure an input monitor
+struct __attribute__((packed)) CanMessageChangeInputMonitorNew
+{
+	static constexpr CanMessageType messageType = CanMessageType::changeInputMonitorNew;
+
+	uint16_t requestId : 12,
+			 zero : 4;
+	RemoteInputHandle handle;
+	uint32_t param;
+	uint8_t action;
+
+	static constexpr uint8_t actionDontMonitor = 0, actionDoMonitor = 1, actionDelete = 2, actionChangeThreshold = 3, actionChangeMinInterval = 4,
+								actionReturnPinName = 5, actionSetDriveLevel = 6;
+
+	// When the action is actionSetDriveLevel, some values of param define a special action:
+	static constexpr uint32_t paramAutoCalibrateDriveLevelAndReport = 0xFFFFFFFF, paramReportDriveLevel = 0xFFFFFFFE;
+
+	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; }
+};
+
+// Struct to represent an analog handle and the reading from it
+struct __attribute__((packed)) AnalogHandleData
+{
+	uint32_t reading;						// store this first so that if the object is aligned, so is this field
+	RemoteInputHandle handle;
 };
 
 // Request to read inputs, including analog inputs
@@ -923,19 +967,26 @@ struct __attribute__((packed)) CanMessageBoardStatus
 			 hasInductiveSensor : 1,
 			 zero : 10,							// reserved for future use
 			 underVoltage : 1,
-			 zero2 : 15;
-	MinCurMax values[3];
+			 numAnalogHandles : 3,				// how many instances of AnaloghandleData we append
+			 zero2 : 12;
+	MinCurMax values[3];						// values of Vin, V12 and CPU temperature
+	// After the last present MinCurMax value the data for some analog handles follows (max 4 if all of Vin/V12/mcuTemp are supported)
 
 	void Clear() noexcept
 	{
 		hasVin = hasV12 = hasMcuTemp = underVoltage = hasAccelerometer = hasClosedLoop = hasInductiveSensor = false;
-		zero = zero2 = 0;
+		zero = zero2 = numAnalogHandles = 0;
+	}
+
+	size_t GetAnalogHandlesOffset() const noexcept
+	{
+		const unsigned int numMinCurMaxValues = hasVin + hasV12 + hasMcuTemp;
+		return sizeof(uint32_t) + numMinCurMaxValues * sizeof(values[0]);
 	}
 
 	size_t GetActualDataLength() const noexcept
 	{
-		const unsigned int numValues = hasVin + hasV12 + hasMcuTemp;
-		return sizeof(uint32_t) + numValues * sizeof(values[0]);
+		return GetAnalogHandlesOffset() + numAnalogHandles * sizeof(AnalogHandleData);
 	}
 };
 
@@ -1158,8 +1209,8 @@ union CanMessage
 	CanMessageSetHeaterFaultDetectionParameters setHeaterFaultDetection;
 	CanMessageSetHeaterMonitors setHeaterMonitors;
 	CanMessageSetInputShaping setInputShaping;
-	CanMessageCreateInputMonitor createInputMonitor;
-	CanMessageChangeInputMonitor changeInputMonitor;
+	CanMessageCreateInputMonitorNew createInputMonitorNew;
+	CanMessageChangeInputMonitorNew changeInputMonitorNew;
 	CanMessageInputChanged inputChanged;
 	CanMessageFansReport fansReport;
 	CanMessageWriteGpio writeGpio;
