@@ -117,6 +117,9 @@ struct __attribute__((packed)) CanMessageRevertPosition
 static_assert(CanMessageRevertPosition::GetActualDataLength(MaxLinearDriversPerCanSlave) == sizeof(CanMessageRevertPosition));
 
 // Movement messages
+
+#if 0
+
 struct __attribute__((packed)) CanMessageMovementLinear
 {
 	static constexpr CanMessageType messageType = CanMessageType::movementLinear;
@@ -174,7 +177,8 @@ struct __attribute__((packed)) CanMessageMovementLinear
 	}
 };
 
-// Movement messages
+#endif
+
 struct __attribute__((packed)) CanMessageMovementLinearShaped
 {
 	static constexpr CanMessageType messageType = CanMessageType::movementLinearShaped;
@@ -187,9 +191,10 @@ struct __attribute__((packed)) CanMessageMovementLinearShaped
 	uint32_t extruderDrives : 8,					// which drivers are for extruders
 			 numDrivers : 4,						// how many drivers we included (maximum is 8)
 			 seq : 4,								// sequence number
-			 shapingPlan : 8,						// the input shaping plan for this move (see file InputShaperPlan.h)
+			 zero1 : 8,								// was used to hold the input shaping plan for this move
 			 usePressureAdvance : 1,				// true to apply PA to the extruders and accumulate partial steps
-			 zero : 7;								// unused
+			 useLateInputShaping : 1,
+			 zero2 : 6;								// unused
 
 	static constexpr uint8_t SeqMask = 0x0f;
 
@@ -213,8 +218,8 @@ struct __attribute__((packed)) CanMessageMovementLinearShaped
 	{
 		extruderDrives = 0;
 		usePressureAdvance = 0;
-		shapingPlan = 0;
-		zero = 0;
+		useLateInputShaping = 0;
+		zero1 = zero2 = 0;
 	}
 
 	void DebugPrint() const noexcept;
@@ -704,15 +709,15 @@ struct __attribute__((packed)) CanMessageSetInputShaping
 {
 	static constexpr CanMessageType messageType = CanMessageType::setInputShaping;
 
-	struct ShapingPair { float coefficient; float duration; };
+	struct ShapingPair { float coefficient; float delay; };
 
 	uint16_t requestId : 12,
 			 zero : 4;
 
-	uint16_t numExtraImpulses;							// the number of extra impulses
+	uint16_t numImpulses;								// the total number of impulses
 	ShapingPair impulses[7];							// the coefficients and durations of the impulses
 
-	size_t GetActualDataLength() const noexcept { return (2 * sizeof(uint16_t)) + (numExtraImpulses * sizeof(ShapingPair)); }
+	size_t GetActualDataLength() const noexcept { return (2 * sizeof(uint16_t)) + (numImpulses * sizeof(ShapingPair)); }
 	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; }
 };
 
@@ -1212,7 +1217,9 @@ union CanMessage
 	CanMessageStopMovement stopMovement;
 	CanMessageRevertPosition revertPosition;
 	CanMessageReset reset;
+#if 0
 	CanMessageMovementLinear moveLinear;
+#endif
 	CanMessageMovementLinearShaped moveLinearShaped;
 	CanMessageReturnInfo getInfo;
 	CanMessageSetHeaterTemperature setTemp;
