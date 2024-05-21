@@ -21,6 +21,7 @@ enum class GCodeResult : uint8_t
 	error,							// general error, the reason will be written to the associated reply buffer
 	errorNotSupported,
 	notSupportedInCurrentMode,
+	stopped,						// we are halted because of an emergency stop
 	badOrMissingParameter,
 	remoteInternalError,			// only used if CAN expansion is supported
 	m291Cancelled,
