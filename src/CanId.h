@@ -92,7 +92,7 @@ enum class CanMessageType : uint16_t
 	m569p6 = 6051,
 	m569p7 = 6052,
 	heaterModelNewNew = 6053,
-	setInputShaping = 6054,
+	//unused_was_setInputShaping = 6054,
 	writeLedStrip = 6055,
 	m569p4 = 6056,
 
@@ -106,6 +106,7 @@ enum class CanMessageType : uint16_t
 	testReport = 6059,
 	createInputMonitorNew = 6060,				// was 6057 before 3.5.0-rc.3
 	changeInputMonitorNew = 6061,				// was 6058 before 3.5.0-rc.3
+	setInputShapingNew = 6062,
 
 	// Responses, broadcasts etc. sent by expansion boards
 	standardReply = 4510,

@@ -705,11 +705,11 @@ struct __attribute__((packed)) CanMessageHeaterFeedForward
 };
 
 // Configure input shaping
-struct __attribute__((packed)) CanMessageSetInputShaping
+struct __attribute__((packed)) CanMessageSetInputShapingNew
 {
-	static constexpr CanMessageType messageType = CanMessageType::setInputShaping;
+	static constexpr CanMessageType messageType = CanMessageType::setInputShapingNew;
 
-	struct ShapingPair { float coefficient; float delay; };
+	struct ShapingPair { float coefficient; uint32_t delay; };
 
 	uint16_t requestId : 12,
 			 zero : 4;
@@ -1238,7 +1238,7 @@ union CanMessage
 	CanMessageSetFanSpeed setFanSpeed;
 	CanMessageSetHeaterFaultDetectionParameters setHeaterFaultDetection;
 	CanMessageSetHeaterMonitors setHeaterMonitors;
-	CanMessageSetInputShaping setInputShaping;
+	CanMessageSetInputShapingNew setInputShapingNew;
 	CanMessageCreateInputMonitorNew createInputMonitorNew;
 	CanMessageChangeInputMonitorNew changeInputMonitorNew;
 	CanMessageInputChangedNew inputChangedNew;
