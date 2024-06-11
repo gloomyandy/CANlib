@@ -699,7 +699,7 @@ struct __attribute__((packed)) CanMessageHeaterFeedForward
 	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; zero2 = 0; }
 };
 
-// Configure input shaping
+// Configure input shaping (RRF 3.5.x)
 struct __attribute__((packed)) CanMessageSetInputShaping
 {
 	static constexpr CanMessageType messageType = CanMessageType::setInputShaping;
@@ -713,6 +713,23 @@ struct __attribute__((packed)) CanMessageSetInputShaping
 	ShapingPair impulses[7];							// the coefficients and durations of the impulses
 
 	size_t GetActualDataLength() const noexcept { return (2 * sizeof(uint16_t)) + (numExtraImpulses * sizeof(ShapingPair)); }
+	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; }
+};
+
+// Configure input shaping (RRF 3.6)
+struct __attribute__((packed)) CanMessageSetInputShapingNew
+{
+	static constexpr CanMessageType messageType = CanMessageType::setInputShapingNew;
+
+	struct ShapingPair { float coefficient; uint32_t delay; };
+
+	uint16_t requestId : 12,
+			 zero : 4;
+
+	uint16_t numImpulses;								// the total number of impulses
+	ShapingPair impulses[7];							// the coefficients and durations of the impulses
+
+	size_t GetActualDataLength() const noexcept { return (2 * sizeof(uint16_t)) + (numImpulses * sizeof(ShapingPair)); }
 	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; }
 };
 
@@ -1232,6 +1249,7 @@ union CanMessage
 	CanMessageSetHeaterFaultDetectionParameters setHeaterFaultDetection;
 	CanMessageSetHeaterMonitors setHeaterMonitors;
 	CanMessageSetInputShaping setInputShaping;
+	CanMessageSetInputShapingNew setInputShapingNew;
 	CanMessageCreateInputMonitorNew createInputMonitorNew;
 	CanMessageChangeInputMonitorNew changeInputMonitorNew;
 	CanMessageInputChangedNew inputChangedNew;

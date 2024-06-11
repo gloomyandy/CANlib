@@ -106,6 +106,7 @@ enum class CanMessageType : uint16_t
 	testReport = 6059,
 	createInputMonitorNew = 6060,				// was 6057 before 3.5.0-rc.3
 	changeInputMonitorNew = 6061,				// was 6058 before 3.5.0-rc.3
+	setInputShapingNew = 6062,					// used in firmware 3.6, defined here so that expansion boards running 3.5.2 can ignore it
 
 	// Responses, broadcasts etc. sent by expansion boards
 	standardReply = 4510,
