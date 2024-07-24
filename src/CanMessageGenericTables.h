@@ -132,9 +132,10 @@ constexpr ParamDescriptor M569Point6Params_StatusOnly[] =
 
 constexpr ParamDescriptor M569Point7Params[] =
 {
-	LOCAL_DRIVER_PARAM('P'),
-	REDUCED_STRING_PARAM('C'),
+	LOCAL_DRIVER_PARAM('P'),			// drive number
+	REDUCED_STRING_PARAM('C'),			// port name
 	FLOAT_PARAM('V'),					// brake voltage added at 3.5beta2
+	UINT16_PARAM('S'),					// brake off delay added at 3.6beta1
 	END_PARAMS
 };
 

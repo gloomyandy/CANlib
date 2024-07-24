@@ -311,11 +311,11 @@ struct __attribute__((packed)) DriverStateControl
 	// - If the mode is driverDisabled then all 12 bits are the delay in milliseconds between re-engaging the brake and disabling the motor
 	// - If the mode is driverEnabled then all 12 bits are the delay in milliseconds between enabling the motor and disengaging the brake
 	uint16_t mode : 2,									// see value below
-			 zero : 2,
-			 idlePercentOrDelayAfterBrakeOn : 12;
+			 zero : 6,
+			 idlePercent : 8;
 
-	DriverStateControl() noexcept : mode(0), zero(0), idlePercentOrDelayAfterBrakeOn(0) { }
-	DriverStateControl(uint16_t m, uint16_t idlePcOrBrakeDelay) noexcept : mode(m), zero(0), idlePercentOrDelayAfterBrakeOn(idlePcOrBrakeDelay) { }
+	DriverStateControl() noexcept : mode(0), zero(0), idlePercent(0) { }
+	DriverStateControl(uint16_t m, uint16_t idlePc = 0) noexcept : mode(m), zero(0), idlePercent(idlePc) { }
 
 	static constexpr uint16_t driverDisabled = 0, driverIdle = 1, driverActive = 2;		// values for 'mode'
 };
