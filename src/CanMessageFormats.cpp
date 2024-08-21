@@ -22,33 +22,6 @@ size_t CanAdjustedLength(size_t rawLength)
 					: 64;
 }
 
-#if 0	// these messages are no longer used
-
-void CanMessageMovement::DebugPrint() const noexcept
-{
-	debugPrintf("Can: %08" PRIx32 " %" PRIu32 " %" PRIu32 " %" PRIu32 " %f %f",
-		whenToExecute, accelerationClocks, steadyClocks, decelClocks, (double)initialSpeedFraction, (double)finalSpeedFraction);
-	for (size_t i = 0; i < MaxDriversPerCanSlave; ++i)
-	{
-		debugPrintf(" %" PRIi32, perDrive[i].steps);
-	}
-	debugPrintf("\n");
-}
-
-
-void CanMessageMovementLinear::DebugPrint() const noexcept
-{
-	debugPrintf("Can: %08" PRIx32 " %" PRIu32 " %" PRIu32 " %" PRIu32 " %f %f",
-		whenToExecute, accelerationClocks, steadyClocks, decelClocks, (double)initialSpeedFraction, (double)finalSpeedFraction);
-	for (size_t i = 0; i < numDrivers; ++i)
-	{
-		debugPrintf(" %" PRIi32, perDrive[i].steps);
-	}
-	debugPrintf("\n");
-}
-
-#endif
-
 void CanMessageGeneric::DebugPrint(const ParamDescriptor *pt) const noexcept
 {
 	if (pt == nullptr)
