@@ -112,7 +112,7 @@ enum class CanMessageType : uint16_t
 	standardReply = 4510,
 	boardStatusReport = 4511,
 	announceOld = 4512,							// announce message sent by firmware 3.4.0beta4 and earlier
-	fanTachoReport = 4513,
+	//fanTachoReport = 4513,					// unused
 	sensorTemperaturesReport = 4514,
 	heatersStatusReport = 4515,
 	//unused_was_fansRpmReport = 4516,			// replaced by fansReport
