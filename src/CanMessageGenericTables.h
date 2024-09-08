@@ -73,6 +73,7 @@ constexpr ParamDescriptor M569Params[] =
 	UINT16_PARAM('V'),
 	UINT8_ARRAY_PARAM('Y', 3),
 	FLOAT_ARRAY_PARAM('T', 4),
+	INT8_PARAM('U'),
 	END_PARAMS
 };
 
