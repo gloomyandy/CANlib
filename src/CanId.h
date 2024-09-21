@@ -126,7 +126,8 @@ enum class CanMessageType : uint16_t
 	logMessage = 4524,
 	announceNew = 4525,							// announce message sent by firmware 3.4.0beta5 and later
 	debugText = 4526,
-	filamentMonitorsStatusReportNew = 4527,
+	//unused_was_filamentMonitorsStatusReportNew = 4527,
+	filamentMonitorsStatusReportNew2 = 4528,
 
 	// Firmware updates
 	firmwareBlockRequest = 5000,

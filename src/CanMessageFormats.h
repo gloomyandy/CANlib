@@ -1054,26 +1054,31 @@ struct __attribute__((packed)) CanMessageDriversStatus
 };
 
 // This has to be declared outside struct CanMessageFilamentMonitorsStatusNew to avoid having to include this file in FilamentMonitor.h
-struct __attribute__((packed)) FilamentMonitorDataNew
+struct __attribute__((packed)) FilamentMonitorDataNew2
 {
-	uint32_t calibrationLength : 24,	// length in mm over which we measured
+	uint32_t position : 12,				// raw position from the sensor
+			 zero1 : 12,				// reserved for future use
 			 status : 4,				// standard filament status
-			 zero : 2,					// reserved for future use
+			 zero2 : 2,					// reserved for future use
 			 hasLiveData : 1;			// true if the following fields are meaningful for this sensor
-	int16_t avgPercentage;
-	int16_t minPercentage;
-	int16_t maxPercentage;
-	int16_t lastPercentage;
+
+	int32_t minPercentage : 10,
+			maxPercentage : 10,
+			avgPercentage : 10,
+			lastPercentage : 10,		// declaring this struct with attribute packed allows this to straddle word boundaries
+			calibrationLength : 24;
+
+	void ClearReservedFields() noexcept { zero1 = 0; zero2 = 0; }
 };
 
 // Message sent by expansion boards to report the status of their filament monitors
-struct __attribute__((packed)) CanMessageFilamentMonitorsStatusNew
+struct __attribute__((packed)) CanMessageFilamentMonitorsStatusNew2
 {
-	static constexpr CanMessageType messageType = CanMessageType::filamentMonitorsStatusReportNew;
+	static constexpr CanMessageType messageType = CanMessageType::filamentMonitorsStatusReportNew2;
 
 	uint32_t driversReported : 8,			// bitmap of driver numbers with associated filament monitors reported in this message
 			 zero : 24;
-	FilamentMonitorDataNew data[5];
+	FilamentMonitorDataNew2 data[5];
 
 	size_t GetActualDataLength() const noexcept
 	{
@@ -1264,7 +1269,7 @@ union CanMessage
 	CanMessageReadInputsReply readInputsReply;
 	CanMessageBoardStatus boardStatus;
 	CanMessageDriversStatus driversStatus;
-	CanMessageFilamentMonitorsStatusNew filamentMonitorsStatusNew;
+	CanMessageFilamentMonitorsStatusNew2 filamentMonitorsStatusNew2;
 	CanMessageCreateFilamentMonitor createFilamentMonitor;
 	CanMessageDeleteFilamentMonitor deleteFilamentMonitor;
 	CanMessageHeaterTuningCommand heaterTuningCommand;
