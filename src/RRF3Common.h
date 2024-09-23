@@ -220,7 +220,7 @@ union StandardDriverStatus
 
 private:
 	// Strings representing the meaning of each bit in DriverStatus
-	static constexpr const char * _ecv_array BitMeanings[] =
+	static constexpr const char *_ecv_array BitMeanings[] =
 	{
 		// Bits 0-7
 		"over temperature warning",
@@ -309,6 +309,6 @@ static_assert(ARRAY_SIZE(HeaterFaultText) == (unsigned int)HeaterFaultType::heat
 
 NamedEnum(LedStripType, uint8_t, DotStar, NeoPixel_RGB, NeoPixel_RGBW);
 
-const LedStripType DefaultLedStripType = LedStripType::NeoPixel_RGB;
+const LedStripType DefaultLedStripType(LedStripType::NeoPixel_RGB);
 
 #endif /* SRC_RRF3COMMON_H_ */
