@@ -18,7 +18,7 @@
 constexpr size_t MaxSensors = 56;							// limited by the size of bitmap we can store in an ExpressionValue
 constexpr size_t MaxHeaters = 32;
 constexpr size_t MaxMonitorsPerHeater = 3;
-constexpr size_t MaxZProbes = 4;
+constexpr size_t MaxZProbes = 8;
 constexpr size_t MaxFans = 32;
 constexpr size_t MaxGpOutPorts = 64;						// increased in RRF 3.5.0-beta.4
 constexpr size_t MaxLedStrips = 5;
