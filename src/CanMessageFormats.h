@@ -10,6 +10,7 @@
 
 #include "CanId.h"
 #include "RRF3Common.h"
+#include "Duet3Common.h"
 #include "CanSettings.h"
 #include "RemoteInputHandle.h"
 
@@ -20,9 +21,6 @@
 #include <climits>
 #include <ctime>
 #include <cstring>
-
-constexpr unsigned int MaxLinearDriversPerCanSlave = 8;
-constexpr unsigned int MaxHeatersPerCanSlave = 6;
 
 size_t CanAdjustedLength(size_t rawLength) noexcept;
 
@@ -509,8 +507,15 @@ struct __attribute__((packed)) CanMessageChangeInputMonitorNew
 	uint32_t param;
 	uint8_t action;
 
-	static constexpr uint8_t actionDontMonitor = 0, actionDoMonitor = 1, actionDelete = 2, actionChangeThreshold = 3, actionChangeMinInterval = 4,
-								actionReturnPinName = 5, actionSetDriveLevel = 6;
+	static constexpr uint8_t actionDontMonitor = 0,					// stop sending status change messages
+							actionDoMonitor = 1,					// send status change messages
+							actionDelete = 2,						// delete this handle
+							actionChangeThreshold = 3,
+							actionChangeMinInterval = 4,
+							actionReturnPinName = 5,
+							actionSetDriveLevel = 6,				// set the drive level, only for scanning Z probes
+							actionSetTouchMode = 7,					// select touch mode, only for scanning Z probes
+							actionSelectScanningMode = 8;			// select scanning mode, only for scanning Z probes
 
 	// When the action is actionSetDriveLevel, some values of param define a special action:
 	static constexpr uint32_t paramAutoCalibrateDriveLevelAndReport = 0xFFFFFFFF, paramReportDriveLevel = 0xFFFFFFFE;
@@ -663,6 +668,21 @@ struct __attribute__((packed)) CanMessageSetInputShapingNew
 	ShapingPair impulses[7];							// the coefficients and durations of the impulses
 
 	size_t GetActualDataLength() const noexcept { return (2 * sizeof(uint16_t)) + (numImpulses * sizeof(ShapingPair)); }
+	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; }
+};
+
+// Enable a stall endstop, or clear all stall endstops
+struct __attribute__((packed)) CanMessageEnableStallEndstop
+{
+	static constexpr CanMessageType messageType = CanMessageType::enableStallEndstop;
+
+	uint16_t requestId : 12,
+			 zero : 4;
+	uint16_t driverNumber;								// the number of the driver we want to enable a stall endstop for
+	float speed;										// the speed we will use for the homing move, not relevant if driverNumber == disableAll
+
+	static constexpr uint16_t disableAll = 0xFFFF;		// if driverNumber is this then we disable all stall endstops on this board
+
 	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; }
 };
 
@@ -1244,6 +1264,7 @@ union CanMessage
 	CanMessageClosedLoopData closedLoopData;
 	CanMessageEvent event;
 	CanMessageDebugText debugText;
+	CanMessageEnableStallEndstop enableStallEndstop;
 };
 
 static_assert(sizeof(CanMessage) <= 64, "CAN message too big");		// check none of the messages is too large
