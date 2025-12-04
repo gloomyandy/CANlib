@@ -11,60 +11,47 @@
 #define SRC_CANTIMINGDATA_H_
 
 #include "CanId.h"
+#include <General/SimpleMath.h>
 
 // In the following structure, the time quantum is 1 cycle of the 48MHz CAN clock that is used on all types of Duet 3 expansion and tool board.
-// The default bit timing is: TSEG1 26, period 48, SJW 8. The CAN bit time is NTSEG1 + NTSEG2 + 1 time quanta, so the default bit rate is 1MHz.
-// Currently we use a prescaler of 2, so the CAN clock runs at 24MHz and we need to halve these values. But we have the option to switch to 48MHz in future.
+// The CAN bit time is tseg1 + tseg2 + 1 time quanta, so for the default bit rate of 1Mbit/sec this must add up to 48.
 struct CanTiming
 {
 	uint16_t period;				// number of time quanta in 1 bit time, or 0xFFFF if this and the following fields have not been set
-	uint16_t tseg1;					// now far into the period the sample point is, minimum 1, maximum period-2
+	uint16_t tseg1;					// how far into the period the sample point is minus 1, minimum 1, maximum period-2
 	uint16_t jumpWidth;				// the (re)synchronisation jump width
 
-#if STM32H7
-	// Defaults for CAN-FD at 1Mbit/sec for now use Duet bit times
-	static constexpr uint16_t DefaultPeriod_1M = 48;
-	static constexpr uint16_t DefaultTseg1_1M = 26;
-	static constexpr uint16_t DefaultJumpWidth_1M = 8;
+	static constexpr uint32_t ClockFrequency = 48'000'000;					// CAN clock used by all Duet 3 boards
+	static constexpr uint32_t DefaultCanBitRate = 1'000'000;
+	static constexpr float DefaultSamplePoint = 0.78;						// how far we sample into the bit
+	static constexpr float DefaultJumpWidth = 0.25;							// how much of the bit the receive clock can jump to resync. Gets limited when we program the CAN peripheral
 
-	// Defaults for secondary port, plain CAN at 250kbit/sec
-	static constexpr uint16_t DefaultPeriod_250k = 192;
-	static constexpr uint16_t DefaultTseg1_250k = 104;
-	static constexpr uint16_t DefaultJumpWidth_250k = 32;
-
-	static constexpr uint32_t ClockFrequency = 48000000;
-#else
-	// Defaults for Duet boards, CAN-FD at 1Mbit/sec
-	static constexpr uint16_t DefaultPeriod_1M = 48;
-	static constexpr uint16_t DefaultTseg1_1M = 26;
-	static constexpr uint16_t DefaultJumpWidth_1M = 8;
-
-	// Defaults for secondary port, plain CAN at 250kbit/sec
-	static constexpr uint16_t DefaultPeriod_250k = 192;
-	static constexpr uint16_t DefaultTseg1_250k = 104;
-	static constexpr uint16_t DefaultJumpWidth_250k = 32;
-
-	static constexpr uint32_t ClockFrequency = 48000000;
-#endif
-
-	bool IsValid() const noexcept
+	constexpr bool IsValid() const noexcept
 	{
 		return period >= 24 && period <= 4800
 			&& tseg1 != 0 && tseg1 <= period - 2;
 	}
 
-	void SetDefaults_1Mb() noexcept
+	// Set the sample point. The period must be set first.
+	constexpr void SetSamplePoint(float samplePoint) noexcept
 	{
-		period = DefaultPeriod_1M;
-		tseg1 = DefaultTseg1_1M;
-		jumpWidth = DefaultJumpWidth_1M;
+		tseg1 = (uint16_t)(period * samplePoint) - 1;						// tseg1 excludes the 1-clock sync phase for historical reasons, hence the -1
 	}
 
-	void SetDefaults_250kb() noexcept
+	// Set the jump width. The bit rate and sample point must be set first.
+	constexpr void SetJumpWidth(float jw) noexcept
 	{
-		period = DefaultPeriod_250k;
-		tseg1 = DefaultTseg1_250k;
-		jumpWidth = DefaultJumpWidth_250k;
+		jumpWidth = constrain<uint16_t>((uint16_t)(period * jw), 1, period - tseg1 - 1);
+	}
+
+	// The following is called by the bootloader, so it must not use any run-time floating point maths in order to keep the SAMC21 bootloader small
+	constexpr void SetDefaults(uint32_t bitRate) noexcept
+	{
+		constexpr uint32_t DefaultSamplePointTimes1024 = (uint32_t)(DefaultSamplePoint * 1024);
+
+		period = (uint16_t)((ClockFrequency + (bitRate/2))/bitRate);
+		tseg1 = (uint16_t)((period * DefaultSamplePointTimes1024)/1024) - 1;
+		jumpWidth = period - (tseg1 + 1);									// this is the maximum possible, as recommended by CiA
 	}
 };
 
