@@ -91,10 +91,10 @@ private:
 };
 
 static_assert(sizeof(CanUserAreaData) == 16);
-#endif
 
 // Where we store the CAN data
 constexpr uint32_t CanUserAreaDataOffset_SAME5x = 512 - sizeof(CanUserAreaData);
 constexpr uint32_t CanUserAreaDataOffset_SAMC21 = 256 - sizeof(CanUserAreaData);
+#endif
 
 #endif /* SRC_CANTIMINGDATA_H_ */
