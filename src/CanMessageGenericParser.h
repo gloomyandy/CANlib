@@ -17,7 +17,7 @@ class StringRef;
 class CanMessageGenericParser
 {
 public:
-	CanMessageGenericParser(const CanMessageGeneric& p_msg, const ParamDescriptor *p_param) noexcept : msg(p_msg), paramTable(p_param) { }
+	CanMessageGenericParser(const CanMessageGeneric& p_msg, const ParamDescriptor *_ecv_array p_param) noexcept : msg(p_msg), paramTable(p_param) { }
 
 	// Methods to extract parameters from a CAN message. Each returns true if the specified parameter was present.
 	bool GetUintParam(char c, uint32_t& v) const noexcept;
@@ -31,9 +31,9 @@ public:
 	bool GetStringParam(char c, const StringRef& v) const noexcept;
 	bool GetBoolParam(char c, bool &v) const noexcept;
 
-	bool GetArrayParam(char c, ParamDescriptor::ParamType pt, size_t& numValues, const uint8_t*& values) const noexcept;
-	bool GetUint16ArrayParam(char c, size_t& numValues, uint16_t *values) const noexcept;
-	bool GetFloatArrayParam(char c, size_t& numValues, float *values) const noexcept;
+	bool GetArrayParam(char c, ParamDescriptor::ParamType pt, size_t& numValues, const uint8_t *_ecv_array & values) const noexcept;
+	bool GetUint16ArrayParam(char c, size_t& numValues, uint16_t *_ecv_array values) const noexcept;
+	bool GetFloatArrayParam(char c, size_t& numValues, float *_ecv_array values) const noexcept;
 
 	bool HasParameter(char c) const noexcept;
 
@@ -41,7 +41,7 @@ private:
 	ParamDescriptor::ParamType FindParameter(char c, unsigned int& pos) const noexcept;
 
 	const CanMessageGeneric& msg;
-	const ParamDescriptor * const paramTable;
+	const ParamDescriptor *_ecv_array const paramTable;
 };
 
 #endif /* SRC_CANMESSAGEGENERICPARSER_H_ */

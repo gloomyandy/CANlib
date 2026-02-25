@@ -10,6 +10,7 @@
 #ifndef SRC_CANTIMINGDATA_H_
 #define SRC_CANTIMINGDATA_H_
 
+#include <ecv_duet3d.h>
 #include "CanId.h"
 #include <General/SimpleMath.h>
 
@@ -34,7 +35,7 @@ struct CanTiming
 	constexpr bool IsValid() const noexcept
 	{
 		return period >= 24 && period <= 4800
-			&& tseg1 != 0 && tseg1 <= period - 2;
+			&& tseg1 != 0 && tseg1 <= period - 2u;
 	}
 
 	// Set the sample point. The period must be set first.
