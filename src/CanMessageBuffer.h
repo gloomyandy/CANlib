@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <new>
+#include <atomic>
 
 #include "CanId.h"
 #include "CanMessageFormats.h"
@@ -60,8 +61,8 @@ public:
 		marker = 0;
 		extId = 1;
 		fdMode = 1;
-		useBrs = 0;
 		remote = 0;
+		useBrs = 1;
 		reportInFifo = 0;
 		spare = 0;
 		msg.generic.requestId = rid;
@@ -78,7 +79,7 @@ public:
 		marker = 0;
 		extId = 1;
 		fdMode = 1;
-		useBrs = 0;
+		useBrs = 1;
 		remote = 0;
 		reportInFifo = 0;
 		spare = 0;
@@ -97,7 +98,7 @@ public:
 		marker = 0;
 		extId = 1;
 		fdMode = 1;
-		useBrs = 0;
+		useBrs = 1;
 		remote = 0;
 		reportInFifo = 0;
 		spare = 0;
@@ -109,6 +110,7 @@ public:
 	// Set up a message buffer to carry a particular message type, setting the dataLength, priority and code fields.
 	// Return a pointer to the message data cast to the requested type.
 	// Class T must be one of the supported CAN message types.
+	// Caller must set up buf->useBrs before or after calling this.
 	template<class T> T* SetupResponseMessage(CanRequestId rid, CanAddress src, CanAddress dest) noexcept
 	{
 		id.SetResponse(T::messageType, src, dest);
@@ -116,7 +118,6 @@ public:
 		marker = 0;
 		extId = 1;
 		fdMode = 1;
-		useBrs = 0;
 		remote = 0;
 		reportInFifo = 0;
 		spare = 0;
@@ -128,6 +129,7 @@ public:
 	// Set up a message buffer to carry a particular message type, setting the dataLength, priority and code fields.
 	// Return a pointer to the message data cast to the requested type.
 	// Class T must be one of the supported CAN message types.
+	// Caller must set up buf->useBrs before or after calling this.
 	template<class T> T* SetupResponseMessageNoRid(CanAddress src, CanAddress dest) noexcept
 	{
 		id.SetResponse(T::messageType, src, dest);
@@ -135,7 +137,6 @@ public:
 		marker = 0;
 		extId = 1;
 		fdMode = 1;
-		useBrs = 0;
 		remote = 0;
 		reportInFifo = 0;
 		spare = 0;
@@ -154,7 +155,7 @@ public:
 		marker = 0;
 		extId = 1;
 		fdMode = 1;
-		useBrs = 0;
+		useBrs = (T::messageType != CanMessageType::timeSync && T::messageType != CanMessageType::emergencyStop);		// all broadcast messages except time sync and emergency stop use BRS
 		remote = 0;
 		reportInFifo = 0;
 		spare = 0;
@@ -174,7 +175,7 @@ public:
 		marker = 0;
 		extId = 1;
 		fdMode = 1;
-		useBrs = 0;
+		useBrs = (T::messageType != CanMessageType::emergencyStop);
 		remote = 0;
 		reportInFifo = 0;
 		spare = 0;
@@ -192,7 +193,7 @@ public:
 	uint16_t marker : 8,			// message marker for transmit messages
 			extId : 1,				// true to send this using an extended ID
 			fdMode : 1,				// true to send as CAN-FD, false for plain CAN
-			useBrs : 1,				// true to use bit rate switching (only for CAN-FD)
+			useBrs : 1,				// true to use bit rate switching (only for CAN-FD) when sending, true if received message used BRS
 			remote : 1,				// true to set the 'remote' bit in the frame
 			reportInFifo : 1,		// true to report transmission complete via TxEventFifo
 			spare : 2,				// spare bits that are cleared by the Setup calls but are otherwise not used
@@ -201,7 +202,7 @@ public:
 
 private:
 	static CanMessageBuffer *_ecv_null volatile freelist;
-	static volatile unsigned int numFree;
+	static std::atomic<unsigned int> numFree;
 	static volatile unsigned int minNumFree;
 
 #ifdef RTOS

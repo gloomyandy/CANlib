@@ -33,6 +33,8 @@ size_t CanAdjustedLength(size_t rawLength) noexcept;
 // Message formats that don't take a request ID must have a method ClearReservedFields that clears the zero fields
 
 // Time sync message. The realTime field was added at RRF3.2 so it is not transmitted by main boards running 3.1.1 and earlier.
+// Note, time sync messages are always transmitted without using BRS. We should look at making this message smaller,
+// for example by re-ordering the fields so that we can send the movement delay without also sending real time.
 struct __attribute__((packed)) CanMessageTimeSync
 {
 	static constexpr CanMessageType messageType = CanMessageType::timeSync;
@@ -41,8 +43,9 @@ struct __attribute__((packed)) CanMessageTimeSync
 	uint32_t lastTimeSent;							// when we tried to send the previous message
 	uint32_t lastTimeAcknowledgeDelay : 16,			// the delay from that time before the previous message was acknowledged
 			 isPrinting : 1,						// set if we are printing and filament monitor should collect data
-			 fastDataRate : 2,						// CAN-FD data bit rate divided by nominal bit rate, minus 1. 0 (= multiplier 1) means don't use bit rate switching.
-			 zero : 13;								// unused
+			 fastDataRate : 3,						// CAN-FD data bit rate divided by nominal bit rate, minus 1. 0 (= multiplier 1) means don't use bit rate switching.
+			 tseg1Minus1 : 8,						// the tseg1 value for the data phase minus 1
+			 zero: 4;								// unused
 	uint32_t realTime;								// seconds since 00:00:00 UTC on 1 January 1970, unsigned to avoid year 2038 problem. Not always present.
 	uint32_t movementDelay;							// cumulative hiccup time. Not always present.
 
@@ -342,17 +345,17 @@ struct __attribute__((packed)) CanMessageHeaterModelV3
 	uint16_t heater : 8,
 			 enabled : 1,
 			 inverted : 1,
-			 pidParametersOverridden : 1,
+			 _obsolete_was_pidParametersOverridden : 1,	// this is now unused because we no longer support overriding PID parameters
 			 zero2 : 5;
 	HeaterModel basicModel;
 	float maxPwm;
 
 	// The next 3 are used only if pidParametersOverridden is true
-	float kP;								// controller (not model) gain
-	float recipTi;							// reciprocal of controller integral time
-	float tD;								// controller differential time
+	float _obsolete_was_kP;								// controller (not model) gain
+	float _obsolete_was_recipTi;						// reciprocal of controller integral time
+	float _obsolete_was_tD;								// controller differential time
 
-	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; zero2 = 0; }
+	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; _obsolete_was_pidParametersOverridden = 0; zero2 = 0; }
 };
 
 // M570 parameters
@@ -1096,26 +1099,26 @@ struct __attribute__((packed)) CanMessageBoardStatusV1
 	void ClearReservedFields() noexcept { zero = 0; zero2 = 0; }
 };
 
+// Struct to represent driver status. If this is changed then CanMessageDriversStatus must be replaced by a new version.
+struct __attribute__((packed)) OpenLoopStatus
+{
+	uint32_t status;
+};
+
+// Struct to represent driver status including closed loop data. If this is changed then CanMessageDriversStatus must be replaced by a new version.
+struct __attribute__((packed)) ClosedLoopStatus
+{
+	uint32_t status;
+	float16_t averageCurrentFraction;
+	float16_t maxCurrentFraction;
+	float16_t rmsPositionError;
+	float16_t maxAbsPositionError;
+};
+
 // Message sent by expansion boards to report the status of their drivers
 struct __attribute__((packed)) CanMessageDriversStatus
 {
 	static constexpr CanMessageType messageType = CanMessageType::driversStatusReport;
-
-	// Struct to represent driver status
-	struct __attribute__((packed)) OpenLoopStatus
-	{
-		uint32_t status;
-	};
-
-	// Struct to represent driver status including closed loop data
-	struct __attribute__((packed)) ClosedLoopStatus
-	{
-		uint32_t status;
-		float16_t averageCurrentFraction;
-		float16_t maxCurrentFraction;
-		float16_t rmsPositionError;
-		float16_t maxAbsPositionError;
-	};
 
 	uint16_t numDriversReported : 4,
 			 hasClosedLoopData : 1,
