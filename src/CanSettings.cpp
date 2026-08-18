@@ -8,7 +8,7 @@
 #include "CanSettings.h"
 #include "CanId.h"
 #include <cstring>
-#if !STM32
+
 uint16_t CanUserAreaData::GetChecksum() const noexcept
 {
 	const uint16_t *_ecv_array p = reinterpret_cast<const uint16_t *_ecv_array>(this);
@@ -85,5 +85,4 @@ void CanUserAreaData::GetTiming(CanTiming& data) const noexcept
 		data.SetDefaults(CanTiming::DefaultCanBitRate);
 	}
 }
-#endif
 // End

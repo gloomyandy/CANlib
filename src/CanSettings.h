@@ -110,7 +110,7 @@ struct CanTiming
 	}
 };
 
-#if !STM32
+
 // This is read from the user area flash, so all values default to all bits set
 class CanUserAreaData
 {
@@ -145,6 +145,5 @@ static_assert(sizeof(CanUserAreaData) == 16);
 // Where we store the CAN data
 constexpr uint32_t CanUserAreaDataOffset_SAME5x = 512 - sizeof(CanUserAreaData);
 constexpr uint32_t CanUserAreaDataOffset_SAMC21 = 256 - sizeof(CanUserAreaData);
-#endif
 
 #endif /* SRC_CANTIMINGDATA_H_ */
