@@ -222,7 +222,7 @@ template<class T> struct __attribute__((packed)) CanMessageMultipleDrivesRequest
 	uint16_t driversToUpdate;
 	T values[MaxLinearDriversPerCanSlave];
 
-	static constexpr size_t GetActualDataLength(size_t numDrivers) noexcept { return sizeof(uint16_t) * 2 + numDrivers * sizeof(T); }
+	constexpr size_t GetActualDataLength() const noexcept { return sizeof(uint16_t) * 2 + CountSetBits(driversToUpdate) * sizeof(T); }
 	static constexpr size_t MaxDrivesPerMessage() noexcept { return (64 - 2 * sizeof(uint16_t))/sizeof(T); }
 	void SetRequestId(CanRequestId rid) noexcept { requestId = rid; zero = 0; }
 };
@@ -626,7 +626,9 @@ struct __attribute__((packed)) CanMessageHeaterFeedForwardV1
 
 	uint16_t zero;
 	uint16_t heaterNumber : 8,
-			 zero2 : 8;
+			 fanOnly : 1,						// added after 3.7.0-rc.1
+			 nonPrintingExtruderMove : 1,		// added after 3.7.0-rc.1
+			 zero2 : 6;
 	float fanPwmFraction;
 	float extrusionPwmBoost;
 	float extrusionTemperatureBoost;
@@ -919,7 +921,7 @@ struct __attribute__((packed)) CanMessageAnnounceV1
 			usesUf2Binary : 1,				// set if this board takes a main firmware binary in .uf2 format
 			isReconnect : 1,				// set if this board didn't reset but is re-announcing after losing and regaining time sync
 			wasShutDown : 1,				// set if this board switched its heaters off because time sync was lost for longer than the connection timeout
-			zero : 1;						// for future expansion, set to zero
+			noSmartDrivers : 1;				// set if none of the drivers on this board is a smart driver, inverted so older boards are taken to have smart drivers as before
 	char boardTypeAndFirmwareVersion[43];	// the type short name of this board followed by '|' and the firmware version
 
 	size_t GetActualDataLength() const noexcept
@@ -927,7 +929,7 @@ struct __attribute__((packed)) CanMessageAnnounceV1
 
 	static size_t GetMaxTextLength(size_t dataLength) noexcept { return dataLength - (sizeof(timeSinceStarted) + sizeof(uniqueId) + sizeof(uint8_t)); }
 
-	void ClearReservedFields() noexcept { zero = 0; }
+	void ClearReservedFields() noexcept { noSmartDrivers = 0; }
 };
 
 // Struct used within the fans report message

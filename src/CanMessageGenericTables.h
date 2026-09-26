@@ -74,6 +74,7 @@ constexpr ParamDescriptor M569Params[] =
 	UINT8_ARRAY_PARAM('Y', 3),
 	FLOAT_ARRAY_PARAM('T', 4),
 	INT8_PARAM('U'),
+	UINT32_PARAM('C'),					// added at 3.7.0-rc.2, was missing
 	END_PARAMS
 };
 
@@ -236,7 +237,8 @@ constexpr ParamDescriptor M955Params[] =
 	UINT8_PARAM('I'),					// orientation
 	UINT8_PARAM('R'),					// resolution (bits)
 	UINT16_PARAM('S'),					// sampling rate
-	REDUCED_STRING_PARAM('C'),			// pins to use when the accelerometer is connected via SPI
+	UINT32_PARAM('Q'),					// SPI clock frequency (added at 3.7.0-rc.1)
+	REDUCED_STRING_PARAM('C'),			// pins to use (added at 3.7.0-rc.1)
 	END_PARAMS
 };
 
